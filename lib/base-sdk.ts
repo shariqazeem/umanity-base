@@ -1,4 +1,3 @@
-// lib/base-sdk.ts
 'use client';
 
 import { createBaseAccountSDK } from '@base-org/account';
@@ -14,12 +13,9 @@ export const getSDK = () => {
   if (!sdkInstance) {
     sdkInstance = createBaseAccountSDK({
       appName: process.env.NEXT_PUBLIC_APP_NAME || 'Umanity',
-      appLogoUrl: process.env.NEXT_PUBLIC_APP_LOGO_URL || 'https://base.org/logo.png',
+      appLogoUrl: process.env.NEXT_PUBLIC_APP_LOGO_URL || 'https://umanity.xyz/logo.png',
       appChainIds: [baseSepolia.id],
-      subAccounts: {
-        creation: 'on-connect',
-        defaultAccount: 'sub',
-      },
+      // No sub accounts - use universal account directly
     });
   }
 

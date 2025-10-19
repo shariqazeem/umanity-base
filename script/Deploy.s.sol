@@ -6,15 +6,17 @@ import "../src/UmanityDonations.sol";
 
 contract DeployScript is Script {
     function run() external {
-        // Use msg.sender (from --account flag) instead of environment variable
         vm.startBroadcast();
 
+        // Base Sepolia USDC address
+        address usdcToken = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+        
         // Deploy contract
-        UmanityDonations donations = new UmanityDonations();
+        UmanityDonations donations = new UmanityDonations(usdcToken);
         
         console.log("UmanityDonations deployed to:", address(donations));
 
-        // Add test recipients (with EXACT correct checksums)
+        // Add test recipients
         address[] memory testRecipients = new address[](3);
         testRecipients[0] = 0x742D35CC6634c0532925A3b844BC9E7595F0BEb0;
         testRecipients[1] = 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed;

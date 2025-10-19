@@ -1,18 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { SignInWithBaseButton } from '@base-org/account-ui/react';
 import { getSDK } from '@/lib/base-sdk';
 
 interface WalletConnectProps {
-  onConnect?: (address: string, subAccountAddress?: string) => void;
+  onConnect: (address: string) => void;
 }
 
 export function WalletConnect({ onConnect }: WalletConnectProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSignIn = async () => {
+  const handleConnect = async () => {
     setIsConnecting(true);
     setError(null);
 
@@ -20,43 +19,45 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
       const sdk = getSDK();
       const provider = sdk.getProvider();
 
-      const accounts = (await provider.request({
+      console.log('Connecting to Base Account...');
+
+      const accounts = await provider.request({
         method: 'eth_requestAccounts',
-      })) as string[];
+        params: [],
+      }) as string[];
 
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No accounts found');
+      if (accounts.length > 0) {
+        console.log('Connected:', accounts[0]);
+        onConnect(accounts[0]);
       }
-
-      const universalAddress = accounts[0];
-      const subAccountAddress = accounts[1];
-
-      console.log('✅ Connected to Base:', {
-        universalAddress,
-        subAccountAddress,
-      });
-
-      onConnect?.(universalAddress, subAccountAddress);
     } catch (err: any) {
-      console.error('❌ Connection error:', err);
-      setError(err.message || 'Failed to connect wallet');
+      console.error('Connection failed:', err);
+      setError('Failed to connect. Please try again.');
     } finally {
       setIsConnecting(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      {/* ✅ Fixed: Removed unsupported props */}
-      <SignInWithBaseButton onClick={handleSignIn} disabled={isConnecting} />
-
-      {isConnecting && (
-        <p className="text-sm text-gray-600">Connecting to Base Account...</p>
-      )}
+    <div className="space-y-4">
+      <button
+        onClick={handleConnect}
+        disabled={isConnecting}
+        className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+      >
+        {isConnecting ? (
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span>Connecting...</span>
+          </div>
+        ) : (
+          'Connect Base Account'
+        )}
+      </button>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md text-center">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-600 text-center">{error}</p>
         </div>
       )}
     </div>

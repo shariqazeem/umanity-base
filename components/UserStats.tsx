@@ -1,7 +1,13 @@
 'use client';
 
-import { useName } from '@coinbase/onchainkit/identity';
+import { useEffect, useState } from 'react';
+import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
+
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http(),
+});
 
 interface UserStatsProps {
   address: string;
@@ -17,18 +23,30 @@ export function UserStats({
   rank 
 }: UserStatsProps) {
   const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-  
-  // Get basename if exists
-  const { data: basename } = useName({ 
-    address: address as `0x${string}`, 
-    chain: base 
-  });
+  const [basename, setBasename] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getBasename = async () => {
+      try {
+        const name = await publicClient.getEnsName({
+          address: address as `0x${string}`,
+        });
+        if (name) {
+          setBasename(name);
+        }
+      } catch (error) {
+        console.log('No basename found');
+      }
+    };
+
+    getBasename();
+  }, [address]);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-sm text-gray-500 mb-1">Connected Account</p>
+          <p className="text-sm text-gray-500 mb-1">Sub Account (App Wallet)</p>
           {basename ? (
             <div>
               <p className="font-semibold text-lg text-blue-600">{basename}</p>
@@ -45,8 +63,8 @@ export function UserStats({
 
       <div className="grid grid-cols-3 gap-4">
         <div className="text-center bg-blue-50 rounded-xl p-4">
-          <p className="text-2xl font-bold text-gray-900">{totalDonated}</p>
-          <p className="text-xs text-gray-600 mt-1">ETH Donated</p>
+          <p className="text-2xl font-bold text-gray-900">${totalDonated}</p>
+          <p className="text-xs text-gray-600 mt-1">USDC Donated</p>
         </div>
         
         <div className="text-center bg-green-50 rounded-xl p-4">

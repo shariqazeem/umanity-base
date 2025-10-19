@@ -3,22 +3,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { WalletConnect } from '@/components/WalletConnect';
 import { OneTapButton } from '@/components/OneTapButton';
+import { PoolsSection } from '@/components/PoolsSection';
 import { UserStats } from '@/components/UserStats';
 import { useContractStats } from '@/lib/hooks/useContractStats';
 import Link from 'next/link';
 import { getSDK } from '@/lib/base-sdk';
 
+type Tab = 'donate' | 'pools';
+
 export default function AppDashboard() {
   const [userAddress, setUserAddress] = useState<string | null>(null);
-  const [subAccountAddress, setSubAccountAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<Tab>('donate');
 
-  // Use sub account for stats if available, otherwise universal
-  const addressForStats = subAccountAddress || userAddress;
-
-  // Fetch stats from contract
-  const { stats, loading: statsLoading } = useContractStats(addressForStats || undefined, refreshKey);
+  const { stats, loading: statsLoading } = useContractStats(userAddress || undefined, refreshKey);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -32,11 +31,6 @@ export default function AppDashboard() {
 
         if (accounts.length > 0) {
           setUserAddress(accounts[0]);
-          if (accounts[1]) {
-            setSubAccountAddress(accounts[1]);
-            console.log('Universal Account:', accounts[0]);
-            console.log('Sub Account:', accounts[1]);
-          }
         }
       } catch (error) {
         console.error('Failed to check connection:', error);
@@ -48,23 +42,16 @@ export default function AppDashboard() {
     checkConnection();
   }, []);
 
-  const handleConnect = (address: string, subAccount?: string) => {
+  const handleConnect = (address: string) => {
     setUserAddress(address);
-    if (subAccount) {
-      setSubAccountAddress(subAccount);
-      console.log('Connected - Universal:', address);
-      console.log('Connected - Sub Account:', subAccount);
-    }
   };
 
   const handleDisconnect = () => {
     setUserAddress(null);
-    setSubAccountAddress(null);
   };
 
   const handleDonationSuccess = useCallback(() => {
     console.log('Donation success - refreshing stats...');
-    // Force refresh stats after a delay for blockchain confirmation
     setTimeout(() => {
       setRefreshKey(prev => prev + 1);
     }, 5000);
@@ -94,11 +81,8 @@ export default function AppDashboard() {
               <Link href="/leaderboard" className="text-gray-600 hover:text-gray-900 font-medium">
                 Leaderboard
               </Link>
-              <Link href="/recipients" className="text-gray-600 hover:text-gray-900 font-medium">
-                Recipients
-              </Link>
               <Link href="/apply" className="text-gray-600 hover:text-gray-900 font-medium">
-                Apply
+                Apply as Recipient
               </Link>
             </nav>
 
@@ -147,80 +131,115 @@ export default function AppDashboard() {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Show which account is being used */}
-            {subAccountAddress && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-                <p className="text-blue-800">
-                  <span className="font-semibold">Using Sub Account:</span> {subAccountAddress.slice(0, 6)}...{subAccountAddress.slice(-4)}
-                </p>
-                <p className="text-blue-600 text-xs mt-1">
-                  Donations and stats tracked for this address
-                </p>
-              </div>
-            )}
-
             <UserStats
-              address={addressForStats || userAddress}
+              address={userAddress}
               totalDonated={stats.totalDonated}
               donationCount={stats.donationCount}
               rank={stats.rank}
             />
+            {/* Tab Navigation */}
+        <div className="flex justify-center">
+          <div className="inline-flex bg-white rounded-lg border border-gray-200 p-1">
+            <button
+              onClick={() => setActiveTab('donate')}
+              className={`px-6 py-2 rounded-md font-semibold transition-all ${
+                activeTab === 'donate'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              One-Tap Donate
+            </button>
+            <button
+              onClick={() => setActiveTab('pools')}
+              className={`px-6 py-2 rounded-md font-semibold transition-all ${
+                activeTab === 'pools'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Support Pools
+            </button>
+          </div>
+        </div>
 
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-12">
-              <OneTapButton
-                userAddress={userAddress}
-                subAccountAddress={subAccountAddress || undefined}
-                onDonationSuccess={handleDonationSuccess}
-              />
+        {/* Content Based on Active Tab */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-12">
+          {activeTab === 'donate' ? (
+            <OneTapButton
+              userAddress={userAddress}
+              onDonationSuccess={handleDonationSuccess}
+            />
+          ) : (
+            <PoolsSection
+              userAddress={userAddress}
+              onDonationSuccess={handleDonationSuccess}
+            />
+          )}
+        </div>
+
+        {/* Platform Stats */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">Platform Impact</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">${stats.platformTotal}</p>
+              <p className="text-xs text-gray-600">Total USDC Donated</p>
             </div>
-
-            {/* Platform Stats */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">Platform Impact</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{stats.platformTotal}</p>
-                  <p className="text-xs text-gray-600">Total ETH Donated</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{stats.recipientCount}</p>
-                  <p className="text-xs text-gray-600">Recipients</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-600">100%</p>
-                  <p className="text-xs text-gray-600">Goes to Recipients</p>
-                </div>
-              </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{stats.recipientCount}</p>
+              <p className="text-xs text-gray-600">Verified Recipients</p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <div className="text-3xl mb-3">🎯</div>
-                <h3 className="font-bold text-gray-900 mb-2">One Tap</h3>
-                <p className="text-sm text-gray-600">
-                  No need to choose who to help. Our system randomly selects a verified recipient.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <div className="text-3xl mb-3">🔒</div>
-                <h3 className="font-bold text-gray-900 mb-2">Transparent</h3>
-                <p className="text-sm text-gray-600">
-                  Every donation is recorded on Base blockchain. Fully verifiable.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <div className="text-3xl mb-3">💙</div>
-                <h3 className="font-bold text-gray-900 mb-2">Direct Impact</h3>
-                <p className="text-sm text-gray-600">
-                  100 percent of your donation goes directly to someone who needs help.
-                </p>
-              </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-purple-600">100%</p>
+              <p className="text-xs text-gray-600">Goes to Recipients</p>
             </div>
           </div>
-        )}
-      </main>
-    </div>
-  );
+        </div>
+
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl p-6 border border-gray-200">
+            <div className="text-3xl mb-3">🎯</div>
+            <h3 className="font-bold text-gray-900 mb-2">Random Selection</h3>
+            <p className="text-sm text-gray-600">
+              Our system randomly selects verified recipients ensuring fair distribution.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 border border-gray-200">
+            <div className="text-3xl mb-3">🏦</div>
+            <h3 className="font-bold text-gray-900 mb-2">Support Pools</h3>
+            <p className="text-sm text-gray-600">
+              Donate to specific causes like education, healthcare, or emergency relief.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 border border-gray-200">
+            <div className="text-3xl mb-3">✅</div>
+            <h3 className="font-bold text-gray-900 mb-2">Verified Recipients</h3>
+            <p className="text-sm text-gray-600">
+              All recipients are manually verified to ensure your donations help those in real need.
+            </p>
+          </div>
+        </div>
+
+        {/* Call to Action */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center text-white">
+          <h3 className="text-2xl font-bold mb-3">Need Help?</h3>
+          <p className="text-blue-100 mb-6">
+            If you or someone you know needs assistance, apply to become a verified recipient
+          </p>
+          <Link
+            href="/apply"
+            className="inline-block px-8 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition-all"
+          >
+            Apply as Recipient
+          </Link>
+        </div>
+      </div>
+    )}
+  </main>
+</div>
+);
 }
